@@ -27,6 +27,21 @@ func init() {
 	})
 }
 
+func saveUserProfileToRedis(user UserProfile) error {
+	// Convert the user profile to JSON
+	userJSON, err := json.Marshal(user)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user profile: %v", err)
+	}
+
+	// Store the JSON in Redis with the user ID as the key
+	err = redisClient.Set(context.Background(), user.ID, userJSON, 0).Err()
+	if err != nil {
+		return fmt.Errorf("failed to save user profile to Redis: %v", err)
+	}
+	return nil
+}
+
 func addUserHandler(w http.ResponseWriter, r *http.Request) {
 	var user UserProfile
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
@@ -35,12 +50,12 @@ func addUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save user profile to Redis
-	userJSON, err := json.Marshal(user)
+	err := saveUserProfileToRedis(user)
 	if err != nil {
-		http.Error(w, "Error encoding user data", http.StatusInternalServerError)
+		log.Println("Error saving user profile:", err)
+		http.Error(w, "Error saving user profile", http.StatusInternalServerError)
 		return
 	}
-	redisClient.Set(context.Background(), user.ID, userJSON, 0)
 
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, "User %s added successfully", user.ID)

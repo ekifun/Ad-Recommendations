@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sort"
@@ -48,6 +49,41 @@ func init() {
 	})
 }
 
+func saveUserProfileToRedis(user UserProfile) error {
+	// Convert the user profile to JSON
+	userJSON, err := json.Marshal(user)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user profile: %v", err)
+	}
+
+	// Store the JSON in Redis with the user ID as the key
+	err = redisClient.Set(context.Background(), user.ID, userJSON, 0).Err()
+	if err != nil {
+		return fmt.Errorf("failed to save user profile to Redis: %v", err)
+	}
+	return nil
+}
+
+func getUserProfileFromRedis(userID string) (UserProfile, error) {
+	// Fetch the JSON string from Redis
+	userJSON, err := redisClient.Get(context.Background(), userID).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return UserProfile{}, fmt.Errorf("user profile not found")
+		}
+		return UserProfile{}, fmt.Errorf("failed to fetch user profile: %v", err)
+	}
+
+	// Convert the JSON string back to a UserProfile struct
+	var user UserProfile
+	err = json.Unmarshal([]byte(userJSON), &user)
+	if err != nil {
+		return UserProfile{}, fmt.Errorf("failed to unmarshal user profile: %v", err)
+	}
+
+	return user, nil
+}
+
 // Handlers
 
 // Recommend Handler
@@ -59,19 +95,15 @@ func recommendHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch user profile from Redis
-	userJSON, err := redisClient.Get(context.Background(), userID).Result()
+	user, err := getUserProfileFromRedis(userID)
 	if err != nil {
-		log.Println("Error fetching ads:", err)
-		http.Error(w, "Error fetching ads", http.StatusInternalServerError)
+		log.Println("Error fetching user profile:", err)
+		http.Error(w, "User profile not found", http.StatusNotFound)
 		return
 	}
 
-	var user UserProfile
-	if err := json.Unmarshal([]byte(userJSON), &user); err != nil {
-		log.Println("Error decoding user profile:", err)
-		http.Error(w, "Error decoding user profile", http.StatusInternalServerError)
-		return
-	}
+	// Continue recommendation logic with fetched user profile...
+	fmt.Printf("Fetched User: %+v\n", user)
 
 	// Fetch all ads from PostgreSQL
 	rows, err := dbPool.Query(context.Background(), "SELECT ad_id, category, description, target_audience, keywords, created_at FROM ads")
@@ -148,6 +180,24 @@ func calculateRecencyBoost(createdAt time.Time) float64 {
 }
 
 func main() {
+	// Redis Save and Retrieve
+	user := UserProfile{
+		ID:        "user1",
+		Interests: []string{"travel", "adventure"},
+	}
+
+	err := saveUserProfileToRedis(user)
+	if err != nil {
+		log.Fatalf("Error saving user profile: %v", err)
+	}
+
+	retrievedUser, err := getUserProfileFromRedis("user1")
+	if err != nil {
+		log.Fatalf("Error retrieving user profile: %v", err)
+	}
+
+	fmt.Printf("Retrieved User: %+v\n", retrievedUser)
+
 	// Register handlers
 	http.HandleFunc("/recommend", recommendHandler)
 
