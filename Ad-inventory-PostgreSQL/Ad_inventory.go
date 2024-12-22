@@ -17,6 +17,7 @@ type Ad struct {
 	Category       string   `json:"category"`
 	Description    string   `json:"description"`
 	TargetAudience []string `json:"target_audience"`
+	Keywords       []string `json:"keywords"` // Add this field
 }
 
 func main() {
@@ -50,8 +51,9 @@ func addAdHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `INSERT INTO ads (ad_id, category, description, target_audience) VALUES ($1, $2, $3, $4)`
-	_, dbErr := dbPool.Exec(context.Background(), query, ad.AdID, ad.Category, ad.Description, ad.TargetAudience)
+	query := `INSERT INTO ads (ad_id, category, description, target_audience, keywords) 
+          VALUES ($1, $2, $3, $4, $5) ON CONFLICT (ad_id) DO NOTHING`
+	_, dbErr := dbPool.Exec(context.Background(), query, ad.AdID, ad.Category, ad.Description, ad.TargetAudience, ad.Keywords)
 	if dbErr != nil {
 		log.Println("Database error:", dbErr)
 		http.Error(w, "Error adding ad", http.StatusInternalServerError)
@@ -89,8 +91,8 @@ func updateAdHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `UPDATE ads SET category = $1, description = $2, target_audience = $3 WHERE ad_id = $4`
-	_, err := dbPool.Exec(context.Background(), query, ad.Category, ad.Description, ad.TargetAudience, ad.AdID)
+	query := `UPDATE ads SET category = $1, description = $2, target_audience = $3, keywords = $4 WHERE ad_id = $5`
+	_, err := dbPool.Exec(context.Background(), query, ad.Category, ad.Description, ad.TargetAudience, ad.Keywords, ad.AdID)
 	if err != nil {
 		http.Error(w, "Error updating ad", http.StatusInternalServerError)
 		return
