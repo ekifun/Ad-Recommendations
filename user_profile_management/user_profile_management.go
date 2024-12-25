@@ -12,11 +12,11 @@ import (
 
 // UserProfile represents the user profile structure
 type UserProfile struct {
-	ID             string         `json:"id"`                        // Unique identifier for the user
-	Interests      map[string]int `json:"interests"`                 // Map of categories and interaction counts
-	Age            int            `json:"age,omitempty"`             // Optional: User's age
-	Location       string         `json:"location,omitempty"`        // Optional: User's location
-	RecentlyViewed []string       `json:"recently_viewed,omitempty"` // Optional: Recently viewed categories
+	ID                 string         `json:"id"`
+	Interests          map[string]int `json:"interests"`
+	Age                int            `json:"age,omitempty"`
+	Location           string         `json:"location,omitempty"`
+	RecentlyInteracted []string       `json:"recently_interacted,omitempty"`
 }
 
 var redisClient *redis.Client
@@ -116,6 +116,15 @@ func DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "User deleted successfully")
 }
 
+func CalculateRecencyBoost(category string, recentlyInteracted []string) int {
+	for i, c := range recentlyInteracted {
+		if c == category {
+			return 10 - i // Higher score for more recent interactions
+		}
+	}
+	return 0
+}
+
 // PlaybackHandler updates user interests based on playback category
 func PlaybackHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -136,29 +145,30 @@ func PlaybackHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := GetUserProfileFromRedis(request.UserID)
 	if err != nil {
 		if err.Error() == "user profile not found" {
-			// Initialize new profile if the user doesn't exist
 			user = UserProfile{
-				ID:        request.UserID,
-				Interests: make(map[string]int),
+				ID:                 request.UserID,
+				Interests:          make(map[string]int),
+				RecentlyInteracted: []string{},
 			}
 		} else {
-			log.Printf("Error fetching user profile: %v", err)
 			http.Error(w, "Error fetching user profile", http.StatusInternalServerError)
 			return
 		}
 	}
 
-	// Update interests with playback category
 	user.Interests[request.Category]++
 
-	// Save updated profile
+	// Update RecentlyInteracted
+	user.RecentlyInteracted = append([]string{request.Category}, user.RecentlyInteracted...)
+	if len(user.RecentlyInteracted) > 5 {
+		user.RecentlyInteracted = user.RecentlyInteracted[:5]
+	}
+
 	if err := saveUserProfileToRedis(user); err != nil {
-		log.Printf("Error saving updated user profile: %v", err)
 		http.Error(w, "Error saving user profile", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Successfully updated profile for user: %s with category: %s", request.UserID, request.Category)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "User profile updated successfully")
 }

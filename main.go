@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Ad-Recommendations/user_profile_management" // Importing the user profile management package
+	"Ad-Recommendations/user_profile_management"
 	"context"
 	"encoding/json"
 	"log"
@@ -76,7 +76,11 @@ func recommendHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error scanning ad row: %v", err)
 			continue
 		}
-		recommendations = append(recommendations, ad)
+		// Calculate recommendation score
+		score := calculateRecommendationScore(ad, user)
+		if score > 0 {
+			recommendations = append(recommendations, ad)
+		}
 	}
 
 	if len(recommendations) == 0 {
@@ -90,18 +94,35 @@ func recommendHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(recommendations)
 }
 
+func calculateRecommendationScore(ad Ad, user user_profile_management.UserProfile) int {
+	interestScore := user.Interests[ad.Category]
+	recencyBoost := user_profile_management.CalculateRecencyBoost(ad.Category, user.RecentlyInteracted)
+	keywordScore := calculateKeywordMatch(ad.Keywords, user.RecentlyInteracted)
+	return interestScore + recencyBoost + keywordScore
+}
+
+func calculateKeywordMatch(keywords []string, recentlyInteracted []string) int {
+	score := 0
+	for _, keyword := range keywords {
+		for _, category := range recentlyInteracted {
+			if keyword == category {
+				score += 5
+			}
+		}
+	}
+	return score
+}
+
 func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 }
 
-// corsMiddleware wraps an HTTP handler to include CORS support
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		enableCors(w)
 		if r.Method == http.MethodOptions {
-			// Preflight request: respond with OK status
 			w.WriteHeader(http.StatusOK)
 			return
 		}
