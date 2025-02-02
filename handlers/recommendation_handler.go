@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"Ad-Recommendations/models"
 	"Ad-Recommendations/services"
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -14,6 +14,7 @@ type RecommendationRequest struct {
 
 // RecommendationHandler handles HTTP requests to generate ad recommendations
 func RecommendationHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("🟢 RecommendationHandler triggered")
 	// Parse the JSON body
 	var req RecommendationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -27,31 +28,22 @@ func RecommendationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch user history
-	playbackHistory, err := services.FetchUserPlaybackHistory(req.UserID)
-	if err != nil {
-		http.Error(w, "Failed to fetch playback history", http.StatusInternalServerError)
-		return
-	}
+	log.Printf("Processing recommendation request for user: %s", req.UserID)
 
-	adClickHistory, err := services.FetchUserAdClickHistory(req.UserID)
-	if err != nil {
-		http.Error(w, "Failed to fetch ad click history", http.StatusInternalServerError)
-		return
-	}
-
-	// Fetch ads and embeddings (dummy ads and embeddings used for example)
-	ads := []models.Ad{
-		{AdID: "1", Category: "Tech", Description: "Latest gadgets and devices"},
-		{AdID: "2", Category: "Fitness", Description: "Workout equipment and accessories"},
-	}
+	// Dummy embeddings (to be replaced with actual model-generated embeddings)
 	embeddings := [][]float64{
 		{0.8, 0.6, 0.4},
 		{0.7, 0.5, 0.3},
 	}
 
-	// Generate recommendations
-	recommendations := services.GenerateRecommendations(playbackHistory, adClickHistory, ads, embeddings)
+	// Generate recommendations (this function now fetches user history internally)
+	recommendations := services.GenerateRecommendations(req.UserID, embeddings)
+
+	// Check if recommendations were generated
+	if recommendations == nil {
+		http.Error(w, "Failed to generate recommendations", http.StatusInternalServerError)
+		return
+	}
 
 	// Respond with recommendations
 	w.Header().Set("Content-Type", "application/json")

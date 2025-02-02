@@ -32,6 +32,11 @@ func InitDynamoDB() {
 	// Create the DynamoDB client
 	DynamoClient = dynamodb.NewFromConfig(cfg)
 	log.Println("DynamoDB client initialized")
+
+	// Ensure tables exist
+	if err := EnsureTables(); err != nil {
+		log.Fatalf("Failed to ensure tables exist: %v", err)
+	}
 }
 
 // WaitUntilTableActive waits until a DynamoDB table becomes active

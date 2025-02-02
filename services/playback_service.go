@@ -22,7 +22,7 @@ func LogPlayback(userID, category string) error {
 	}
 
 	_, err := db.DynamoClient.PutItem(context.TODO(), &dynamodb.PutItemInput{
-		TableName: aws.String(db.PlaybackTableName), // Dereferencing the pointer
+		TableName: aws.String(db.PlaybackTableName),
 		Item:      entry,
 	})
 	if err != nil {

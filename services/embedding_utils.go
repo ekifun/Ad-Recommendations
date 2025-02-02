@@ -2,6 +2,7 @@ package services
 
 import (
 	"Ad-Recommendations/models" // Import the models package to access the Ad type
+	"log"
 	"math"
 )
 
@@ -20,31 +21,25 @@ func CosineSimilarity(vecA, vecB []float64) float64 {
 }
 
 // GenerateUserVector generates a user vector based on interaction history and ad embeddings
-func GenerateUserVector(playbackHistory, adClickHistory []string, ads []models.Ad, embeddings [][]float64) []float64 {
+func GenerateUserVector(playbackHistory []string, adClickHistory []string, ads []models.Ad, embeddings [][]float64) []float64 {
 	userVector := make([]float64, len(embeddings[0]))
 
-	// Accumulate embeddings for categories in playback history
-	for _, category := range playbackHistory {
-		for i, ad := range ads {
-			if ad.Category == category {
-				for j := range userVector {
-					userVector[j] += embeddings[i][j]
-				}
-			}
-		}
+	// Ensure the embeddings list is correctly indexed
+	if len(ads) > len(embeddings) {
+		log.Printf("❌ Error: Ads (%d) exceed available embeddings (%d). Adjusting...", len(ads), len(embeddings))
+		embeddings = padEmbeddings(embeddings, len(ads))
 	}
 
-	// Additional weighting for ad clicks
-	for _, adID := range adClickHistory {
-		for i, ad := range ads {
-			if ad.AdID == adID {
-				for j := range userVector {
-					userVector[j] += embeddings[i][j] * 1.5 // Apply weight for clicks
-				}
-			}
+	for i, ad := range ads {
+		if i >= len(embeddings) {
+			log.Printf("⚠️ Skipping ad %s due to missing embedding", ad.AdID)
+			continue
+		}
+
+		for j := range userVector {
+			userVector[j] += embeddings[i][j] // Avoids index out of range
 		}
 	}
-
 	return normalizeVector(userVector)
 }
 

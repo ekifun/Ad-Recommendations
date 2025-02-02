@@ -10,9 +10,11 @@ import (
 )
 
 var (
-	UserTableName     = "Users"
-	PlaybackTableName = "PlaybackTable"
-	AdClickTableName  = "AdClickTable"
+	UserTableName            = "Users"
+	PlaybackTableName        = "PlaybackTable"
+	AdClickTableName         = "AdClickTable"
+	CategoryMappingTableName = "CategoryMappingTable" // ✅ Define Category Mapping Table
+	AdTableName              = "AdTable"              // ✅ Define Ad Table
 )
 
 // EnsureTables ensures the existence of required tables in DynamoDB
@@ -48,6 +50,24 @@ func EnsureTables() error {
 			},
 			AttributeDefs: []types.AttributeDefinition{
 				{AttributeName: aws.String("user_id"), AttributeType: types.ScalarAttributeTypeS},
+				{AttributeName: aws.String("ad_id"), AttributeType: types.ScalarAttributeTypeS},
+			},
+		},
+		{
+			Name: CategoryMappingTableName, // ✅ Ensure Category Mapping Table
+			KeySchema: []types.KeySchemaElement{
+				{AttributeName: aws.String("movie_category"), KeyType: types.KeyTypeHash},
+			},
+			AttributeDefs: []types.AttributeDefinition{
+				{AttributeName: aws.String("movie_category"), AttributeType: types.ScalarAttributeTypeS},
+			},
+		},
+		{
+			Name: AdTableName, // ✅ Ensure Ad Table
+			KeySchema: []types.KeySchemaElement{
+				{AttributeName: aws.String("ad_id"), KeyType: types.KeyTypeHash},
+			},
+			AttributeDefs: []types.AttributeDefinition{
 				{AttributeName: aws.String("ad_id"), AttributeType: types.ScalarAttributeTypeS},
 			},
 		},
