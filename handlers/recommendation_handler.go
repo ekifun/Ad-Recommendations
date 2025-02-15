@@ -30,14 +30,8 @@ func RecommendationHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Processing recommendation request for user: %s", req.UserID)
 
-	// Dummy embeddings (to be replaced with actual model-generated embeddings)
-	embeddings := [][]float64{
-		{0.8, 0.6, 0.4},
-		{0.7, 0.5, 0.3},
-	}
-
 	// Generate recommendations (this function now fetches user history internally)
-	recommendations := services.GenerateRecommendations(req.UserID, embeddings)
+	recommendations := services.GenerateRecommendations(req.UserID)
 
 	// Check if recommendations were generated
 	if recommendations == nil {

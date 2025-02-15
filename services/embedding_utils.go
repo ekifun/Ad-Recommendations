@@ -61,3 +61,44 @@ func normalizeVector(vec []float64) []float64 {
 
 	return vec
 }
+
+// ComputeUserVector averages all embeddings from user playback history
+func ComputeUserVector(historyEmbeddings [][]float64) []float64 {
+	const embeddingSize = 768 // Adjust based on actual embedding vector size
+
+	if len(historyEmbeddings) == 0 {
+		log.Println("⚠️ No embeddings found for user history. Using default vector.")
+		return make([]float64, embeddingSize)
+	}
+
+	// Compute mean embedding
+	userVector := make([]float64, embeddingSize)
+	for _, embedding := range historyEmbeddings {
+		for i, value := range embedding {
+			userVector[i] += value
+		}
+		log.Println("Generated Embedding:", embedding)
+	}
+
+	// Normalize by dividing by count
+	for i := range userVector {
+		userVector[i] /= float64(len(historyEmbeddings))
+	}
+
+	log.Printf("✅ Computed user embedding vector successfully: %v", userVector)
+	return userVector
+}
+
+// padEmbeddings ensures that all embeddings have a fixed size
+func padEmbeddings(embeddings [][]float64, requiredSize int) [][]float64 {
+	currentSize := len(embeddings)
+	embeddingLength := len(embeddings[0]) // Assuming all embeddings have the same length
+
+	for i := currentSize; i < requiredSize; i++ {
+		zeroVector := make([]float64, embeddingLength)
+		embeddings = append(embeddings, zeroVector)
+	}
+
+	log.Printf("✅ Adjusted embeddings to match ads: %d embeddings for %d ads", len(embeddings), requiredSize)
+	return embeddings
+}

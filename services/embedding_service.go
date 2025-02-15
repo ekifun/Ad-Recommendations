@@ -9,44 +9,54 @@ import (
 	"net/http"
 )
 
-// GenerateEmbeddings generates embeddings for the given texts using an external embedding service
-func GenerateEmbeddings(texts []string, serviceURL string) ([][]float64, error) {
-	// Prepare the request payload
-	payload := map[string]interface{}{
-		"texts": texts,
-	}
-	jsonData, err := json.Marshal(payload)
+// Flask AI Server URL
+const AI_SERVICE_URL = "http://localhost:5001"
+
+// Handle API Calls to AI Service
+func callAIService(endpoint string, texts []string) ([][]float64, error) {
+	payload, err := json.Marshal(map[string]interface{}{"texts": texts})
 	if err != nil {
-		log.Printf("Failed to marshal payload: %v", err)
+		log.Printf("❌ Error: Failed to marshal request for %s: %v", endpoint, err)
 		return nil, err
 	}
 
-	// Send the request to the embedding service
-	resp, err := http.Post(serviceURL, "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(AI_SERVICE_URL+endpoint, "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		log.Printf("Failed to send request to embedding service: %v", err)
+		log.Printf("🚨 AI Service Unavailable (%s): %v", endpoint, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	// Read and parse the response
+	// Handle HTTP errors (non-200 responses)
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("⚠️ AI Service Error (%s): HTTP %d", endpoint, resp.StatusCode)
+		return nil, errors.New("AI service returned an error")
+	}
+
+	// Read response body
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("Failed to read response body: %v", err)
+		log.Printf("❌ Error: Failed to read response from %s: %v", endpoint, err)
 		return nil, err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("Embedding service returned status %d: %s", resp.StatusCode, body)
-		return nil, errors.New("failed to generate embeddings")
-	}
-
+	// Parse embeddings
 	var embeddings [][]float64
-	err = json.Unmarshal(body, &embeddings)
-	if err != nil {
-		log.Printf("Failed to unmarshal embeddings: %v", err)
+	if err := json.Unmarshal(body, &embeddings); err != nil {
+		log.Printf("❌ Error: Failed to unmarshal response from %s: %v", endpoint, err)
 		return nil, err
 	}
 
+	log.Printf("✅ Successfully generated embeddings via %s", endpoint)
 	return embeddings, nil
+}
+
+// Generate TF-IDF Embeddings
+func GenerateTFIDFEmbeddings(texts []string) ([][]float64, error) {
+	return callAIService("/generate-tfidf", texts)
+}
+
+// Generate BERT Embeddings
+func GenerateBERTEmbeddings(texts []string) ([][]float64, error) {
+	return callAIService("/generate-bert", texts)
 }

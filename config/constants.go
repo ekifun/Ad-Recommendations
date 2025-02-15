@@ -1,7 +1,7 @@
 package config
 
 const (
-	AdTableName       = "AdsTable"
-	PlaybackTableName = "PlaybackHistoryTable"
-	AdClickTableName  = "AdClickHistoryTable"
+	AdTableName       = "AdTable"
+	PlaybackTableName = "PlaybackTable"
+	AdClickTableName  = "AdClickTable"
 )
